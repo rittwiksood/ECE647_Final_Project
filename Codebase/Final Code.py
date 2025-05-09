@@ -8,25 +8,25 @@ def generate_sparse_channel(Nt, Nr, S, snr_db):
     """
     Generate a sparse MIMO channel matrix
     Args:
-        Nt: Number of transmit antennas
-        Nr: Number of receive antennas
-        S: Number of non-zero paths (sparsity level)
+        Nt is the Number of transmit antennas
+        Nr is the Number of receive antennas
+        S is the umber of non-zero paths (sparsity level)
         snr_db: SNR in dB
     Returns:
-        H: Sparse channel matrix (Nt x Nr)
-        noise: Properly sized noise matrix (P x Nr)
+        H Matrix: Sparse channel matrix (Nt x Nr)
+        noise Matrix: Properly sized noise matrix (P x Nr)
     """
-    # Create sparse matrix with S non-zero entries
+    # Creating sparse matrix with a  S non-zero entries
     H = np.zeros((Nt, Nr), dtype=complex)
     nonzero_indices = np.random.choice(Nt * Nr, S, replace=False)
     values = (np.random.randn(S) + 1j * np.random.randn(S)) / np.sqrt(2)
     H.flat[nonzero_indices] = values
 
-    # Normalize channel power
+    # Normalizing channel power
     H = H / np.linalg.norm(H, 'fro') * np.sqrt(Nt * Nr)
 
     return H
-
+    #Sparse channel geneeration ends
 
 def lasso_channel_estimation(y, Phi, lambda_lasso):
     """
@@ -41,26 +41,26 @@ def lasso_channel_estimation(y, Phi, lambda_lasso):
     P, Nr = y.shape
     Nt = Phi.shape[1]
 
-    H_est = np.zeros((Nt, Nr), dtype=complex)
+    H_est = np.zeros((Nt, Nr), dtype=complex) #Estimated channel matrix can be complx as well. 
 
     for i in range(Nr):
-        # Solve LASSO for each receive antenna
+        # Solve LASSO for each of the receiver
         h = cp.Variable(Nt, complex=True)
-        objective = cp.Minimize(cp.sum_squares(y[:, i] - Phi @ h) + lambda_lasso * cp.norm1(h))
-        problem = cp.Problem(objective)
-        problem.solve(solver=cp.SCS)
+        objective = cp.Minimize(cp.sum_squares(y[:, i] - Phi @ h) + lambda_lasso * cp.norm1(h)) #Minimising function
+        problem = cp.Problem(objective) 
+        problem.solve(solver=cp.SCS) # Solve api
 
-        H_est[:, i] = h.value
+        H_est[:, i] = h.value 
 
     return H_est
 
 
 def group_lasso_channel_estimation(y, Phi, lambda_glasso, group_size):
     """
-    Group LASSO-based channel estimation
+    Group LASSO-based channel estimation algorithm
     Args:
-        y: Received signal (P x Nr)
-        Phi: Pilot matrix (P x Nt)
+        y: Received signal (P x Nr) Matrix
+        Phi: Pilot matrix (P x Nt) matrix 
         lambda_glasso: Regularization parameter
         group_size: Size of antenna correlation groups
     Returns:
@@ -76,7 +76,7 @@ def group_lasso_channel_estimation(y, Phi, lambda_glasso, group_size):
         # Solve Group LASSO for each receive antenna
         h = cp.Variable(Nt, complex=True)
 
-        # Create group norms
+        # Create group norms for Lasso Groups
         group_norms = []
         for g in range(num_groups):
             group = h[g * group_size:(g + 1) * group_size]
@@ -113,16 +113,16 @@ def omp_channel_estimation(y, Phi, sparsity):
         Phi_r = Phi.copy()
 
         for _ in range(sparsity):
-            # Find the column of Phi most correlated with residual
+            # Find the column of Phi most correlated with residual signal
             correlations = np.abs(Phi_r.T.conj() @ residual)
             new_idx = np.argmax(correlations)
             idx_set.append(new_idx)
 
-            # Solve least squares on selected columns
+            # Solve least squares on selected columns set
             Phi_active = Phi[:, idx_set]
             h_ls = np.linalg.pinv(Phi_active) @ y[:, i]
 
-            # Update residual
+            # Update residual set
             residual = y[:, i] - Phi_active @ h_ls
 
             # Remove selected column from consideration
@@ -146,10 +146,10 @@ def evaluate_performance(H_true, H_est):
         nmse: Normalized MSE
         support_error: Support recovery error
     """
-    # Normalized MSE
+    # Normalized MSE (Parameter NMSE)
     nmse = np.linalg.norm(H_est - H_true, 'fro') ** 2 / np.linalg.norm(H_true, 'fro') ** 2
 
-    # Support recovery error
+    # Support recovery error (SPE)
     true_support = np.abs(H_true) > 1e-3
     est_support = np.abs(H_est) > 1e-3
     support_error = np.mean(true_support != est_support)
@@ -157,7 +157,7 @@ def evaluate_performance(H_true, H_est):
     return nmse, support_error
 
 
-# Simulation parameters
+# Simulation parameters  .... Need to see on different lambdas
 Nt = 64  # Number of transmit antennas
 Nr = 8  # Number of receive antennas
 S = 8  # Sparsity level
